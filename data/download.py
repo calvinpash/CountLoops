@@ -5,11 +5,15 @@ Call:
 python download.py (append: + for True)
 '''
 from requests import get
-from os import listdir
+from os import listdir, mkdir
 from sys import argv
 import csv
 
 def main(args):
+    if "dat.csv" not in listdir('.'):
+        return
+    if "images" not in listdir('.'):
+        mkdir("images")
     append = ((args[-1] == "+") if len(args) > 0 else False)
     offset = 1
     if append:
