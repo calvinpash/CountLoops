@@ -17,7 +17,8 @@ import csv
 chars = list(printable)[:95]
 chars[64:68] = ["%23","$","%25","%26"]
 chars[72] = "%2B"
-loops = [int(i) for i in list("10001010211101101000000011100000000012010000000000111100000000001222000000000000000010000000000")]
+chars = chars[:91] + chars[92:]#Get rid of |
+loops = [int(i) for i in list("1000101021110110100000001110000000001201000000000011110000000000122200000000000000001000000000")]
 
 def main(args):
     n = int(args[0])
@@ -31,7 +32,7 @@ def main(args):
     for i in range(n):
         #Generate string of text and corresponding count of loops
         length = int(triangular(1,11,6))
-        nums = [randint(0,94) for i in range(length)]
+        nums = [randint(0,93) for i in range(length)]
         text = "".join([chars[i] for i in nums])
         count = sum([loops[i] for i in nums])
 
