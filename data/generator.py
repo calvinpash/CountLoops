@@ -1,14 +1,14 @@
 '''
-Calvin Pash
-2-20-21
 Generate a given number of dummy images
 Generate corresponding csv file with number of loops
-To call:
+
+Call:
 python generator.py [n] (append: + for True)
 '''
 from random import triangular, randint
 from requests import get
 from string import printable
+from os import listdir
 from sys import argv
 import csv
 
@@ -21,7 +21,13 @@ loops = [int(i) for i in list("1000101021110110100000001110000000001201000000000
 
 def main(args):
     n = int(args[0])
-    texts = []
+    append = (args[-1] == "+" and "./dat.csv" in listdir('.'))
+    offset = 0
+    #if we're appending, we want the indices to start at the appropriate row
+    if append:
+        offset = len(list(csv.reader(open("./dat.csv")))) - 1
+
+    output = []
     for i in range(n):
         #Generate string of text and corresponding count of loops
         length = int(triangular(1,11,6))
@@ -37,18 +43,14 @@ def main(args):
         fore = "".join(["0f"[int(i)] for i in b_fore])
         back = "".join(["0f"[int(i)] for i in b_back])
 
-        texts.append([i,text,count,fore,back])
+        output.append([i + offset,text,count,fore,back])
 
     #we use the with function here, since it will close the writer as soon as we're done with it
-    append = args[-1] == "+"
     with open("./dat.csv", ("a" if append else "w"), newline = '') as csvfile:
         writer = csv.writer(csvfile)
         if not(append):
             writer.writerow(["file_index","text","loops","foreground","background"])
-        for line in texts:
+        for line in output:
             writer.writerow(line)
-
-
-
 
 main(argv[1:])
