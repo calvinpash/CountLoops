@@ -2,29 +2,33 @@
 Download images using data in dat.csv
 
 Call:
-python download.py (append: + for True)
+python download.py (test?: t for true) (append: + for True)
 '''
 from requests import get
+import os
 from os import listdir, mkdir
 from sys import argv
 import csv
 
 def main(args):
-    if "dat.csv" not in listdir('.'):
-        return
-    if "images" not in listdir('.'):
-        mkdir("images")
-    append = ((args[-1] == "+") if len(args) > 0 else False)
-    offset = 1
+    test = (len(args) > 0 and args[-1] == "t") or (len(args) > 1 and args[-2] == "t")
+    target = "./" + ("test_" if test else "") + "images"
+    targetcsv = "./" + ("test_" if test else "") + "dat.csv"
+    append = (len(args) > 0 and (args[-1] == "+"))
+    offset = 1#1 because of the first line of the csv
     if append:
         #Get current count of image files in folder
-        offset += sum([1 for i in listdir('./images') if i[-(i[::-1].index(".")):] == "png"])
+        offset += len([i for i in listdir(target) if i.endswith(".png")])
+    if not os.path.exists(targetcsv):
+        return TypeError("Missing necessary csv file: " + targetcsv)
+    if not os.path.exists(target):
+        mkdir(target)
 
-    with open("./dat.csv") as file:
+    with open(targetcsv) as file:
         r = csv.reader(file)
         for row in list(r)[offset:]:
             #Obviously, this isn't practical for a large scale, but this is a quick and dirty way to get a small set of random images
             url = f"https://dummyimage.com/64.png/%s/%s/&text=%s" % (row[3], row[4], row[1])
-            open(f"./images/%s.png" % row[0],"wb").write(get(url).content)
+            open(f"%s/%s.png" % (target,row[0]),"wb").write(get(url).content)
 
 main(argv[1:])
