@@ -1,3 +1,8 @@
 #Data files
 data/images
 data/dat.csv
+data/test_images
+data/test_dat.csv
+
+#Model file
+loops_counter_net.pth
