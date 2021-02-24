@@ -52,7 +52,7 @@ def main(args):
             text = text.replace("/.", "./")
         count = sum([loops[i] for i in nums])
         if disp:
-            print("%d\t%d\t%s" % (i, loops, text))
+            print("%d\t%d\t%s" % (i, count, text))
         #Generate foreground and background with 1 or 0 color channels similar
         b_fore = [(randint(0,1)==1) for i in range(3)]
         b_back = [not(i) for i in b_fore]
