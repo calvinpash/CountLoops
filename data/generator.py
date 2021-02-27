@@ -9,7 +9,7 @@ from random import triangular, randint
 from requests import get
 from string import printable
 from sys import argv
-import csv
+from pandas import DataFrame, read_csv, concat
 import os
 
 
@@ -33,7 +33,8 @@ def main(args):
     offset = 0
     #if we're appending, we want the indices to start at the appropriate row
     if append:
-        offset = len(list(csv.reader(open(target)))) - 1
+        df = read_csv(target)
+        offset = len(df)
 
     output = []
     print(f"Generating %d entries" % n)
@@ -43,6 +44,7 @@ def main(args):
     print("Generating...")
     if disp:
         print("Index\tLoops\tText")
+
     for i in range(offset, n + offset):
         #Generate string of text and corresponding count of loops
         length = int(triangular(1,11,6))
@@ -53,6 +55,7 @@ def main(args):
         count = sum([loops[i] for i in nums])
         if disp:
             print("%d\t%d\t%s" % (i, count, text))
+
         #Generate foreground and background with 1 or 0 color channels similar
         b_fore = [(randint(0,1)==1) for i in range(3)]
         b_back = [not(i) for i in b_fore]
@@ -65,12 +68,12 @@ def main(args):
     print("Generation finished\n")
     #we use the with function here, since it will close the writer as soon as we're done with it
     print("Writing to %s" % target)
-    with open(target, ("a" if append else "w"), newline = '') as csvfile:
-        writer = csv.writer(csvfile)
-        if not(append):
-            writer.writerow(["file_index","text","loops","foreground","background"])
-        for line in output:
-            writer.writerow(line)
+    if not 'df' in locals():
+        df = DataFrame(columns = ["file_index","text","loops","foreground","background"])
+    # with open(target, "w", newline = '') as csvfile:
+    df_output = DataFrame(output, columns = list(df.columns))
+    df = concat([df, df_output])
+    df.to_csv(target, index = False)
     print("Writing finished")
 
 main(argv[1:])

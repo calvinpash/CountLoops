@@ -8,7 +8,7 @@ from requests import get
 import os
 from os import listdir, mkdir
 from sys import argv
-import csv
+from pandas import read_csv
 
 def main(args):
     disp = (args[-1] == "d" or
@@ -38,8 +38,8 @@ def main(args):
     if disp:
         print("Index\tText")
     with open(targetcsv) as file:
-        r = csv.reader(file)
-        for row in list(r)[offset:]:
+        csv = read_csv(file)
+        for row in csv[offset:].iloc:
             #Obviously, this isn't practical for a large scale, but this is a quick and dirty way to get a small set of random images
             url = f"https://dummyimage.com/64.png/%s/%s/&text=%s" % (row[3], row[4], row[1])
             open(f"%s/%s.png" % (target,row[0]),"wb").write(get(url).content)
