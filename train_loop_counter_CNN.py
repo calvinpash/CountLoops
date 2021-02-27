@@ -1,7 +1,7 @@
 '''
 Train neural network to estimate the number of enclosed spaces in a given text image
 To Call:
-python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (batch size = 1000: b[0-9]+) (append?: +|(^$) )
+python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (batch size = 1000: b[0-9]+) (output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
 '''
 import torch
 import torch.nn as nn
@@ -11,7 +11,11 @@ from torch.utils.data import DataLoader
 import torchvision
 from torchvision import transforms, utils
 from data.dataset_definitions import LoopsDataset, ToTensor
+from pandas import DataFrame, concat, read_csv
+import numpy as np
 from sys import argv
+import os
+from sys import exit #helpful for troubleshooting
 #Create Dataset
 
 class Net(nn.Module):
@@ -45,6 +49,9 @@ def main(args):
     e = 100
     b = 1000
     append = False
+    o = False
+    o_append = False
+    target = "./loops_counter_net.pth"
     for arg in args:#Takes in command line arguments; less sugar but more rigorous
         try: arg = int(arg)
         except: pass
@@ -52,27 +59,57 @@ def main(args):
             e = arg
         elif arg == "+":
             append = True
+        elif arg[0] == "o":
+            o = True
+            if len(arg) > 1 and arg[1] == "+":
+                o_append = True
         elif arg[0] == "b":
             try: b = int(arg[1:])
             except: pass
+        elif arg[0] == ".":
+            target = arg
         else:
             print(f"Argument '%s' ignored" % str(arg))
+
+    if not os.path.exists(target):
+        append = False
+
     print(f"Epoch Count: %d" % e)
     print(f"Batch Size: %d" % b)
+    print(f"Output Loss: %r" % o)
+    print(f"Model file: %s" % target)
     # print(f"Append to model: %r" % append)
 
-
+    net = Net()
+    criterion = nn.MSELoss()
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
     dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = 4)
+
     classes = tuple(range(21))
 
-    net = Net()
-    criterion = nn.MSELoss()
     #We use MSELoss here because our output is a vector of length 21
     optimizer = optim.SGD(net.parameters(), lr=0.1)#,momentum = 0.9)
     print("Loaded\n")
+
+
+    if o:
+        if not os.path.exists(f"./loss/%s" % str(criterion)[:-6]):
+            os.mkdir(f"loss/%s" % str(criterion)[:-6])
+        settings = f"e%db%dnw%d" % (e, b, dataloader.num_workers)
+        loss_file = f"./loss/%s/%s_%s.csv" % (str(criterion)[:-6], target[target.rindex("/")+1:target.rindex(".")], settings)
+        loss_output = []#epoch, batch, loss
+        if not os.path.exists(loss_file):
+            o_append = False
+        elif not o_append:
+            print("These settings will overwrite an existing loss output file.")
+            overwrite = input("Are you sure? (Y/N): ")
+            if not overwrite in "yY":
+                o_append = True
+                print("Good choice, buddy\n")
+        print(f"Outputting loss to: %s\n" % loss_file)
+
     for epoch in range(e):  # loop over the dataset multiple times
         print(f"Current Epoch: %d" % epoch)
         running_loss = 0.0
@@ -85,6 +122,8 @@ def main(args):
             loss = criterion(outputs, loops)
 
             print(f"\t%d\t%f" % (i, loss.sum().item()))
+            if o:
+                loss_output.append([epoch, i, loss.sum().item()])
             loss.backward()
             optimizer.step()
 
@@ -96,7 +135,17 @@ def main(args):
 
     print('Finished Training')
 
-    torch.save(net.state_dict(), './loops_counter_net.pth')
+    if o:
+        if o_append:
+            df = read_csv(loss_file)
+        else:
+            df = DataFrame(columns = ["epoch","batch","loss", "train_number"])
+    # with open(target, "w", newline = '') as csvfile:
+        df_output = DataFrame(loss_output, columns = ["epoch","batch","loss"])
+        df_output = df_output.assign(train_number = np.full(len(loss_output), len(df.train_number.unique())))
+        df = concat([df, df_output])
+        df.to_csv(loss_file, index = False)
+    torch.save(net.state_dict(), target)
 
 if __name__ == '__main__':
     main(argv[1:])
