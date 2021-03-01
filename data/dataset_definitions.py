@@ -3,7 +3,7 @@ import torchvision
 import pandas as pd
 import numpy as np
 import os
-from skimage import io, transform
+from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -22,11 +22,15 @@ class LoopsDataset(Dataset):
             idx = idx.tolist()
 
         img_name = os.path.join(self.root_dir, str(self.loops_frame.iloc[idx, 0]) + ".png")
-        image = io.imread(img_name)
+        image = np.array(Image.open(img_name))
         text = self.loops_frame.iloc[idx, 1].replace("%2B","+").replace("%23","#").replace("%25","%").replace("%26","&")
 
+        #If using one-hot encoded list (MSE, . . .)
         loops = np.zeros(21)
         loops[self.loops_frame.iloc[idx, 2]] = 1
+
+        #If using label index (CrossEntropy, . . .
+        #loops = self.loops_frame.iloc[idx, 2]
         sample = {'image': image, 'loops': loops, 'text': text}
 
         if self.transform:
@@ -37,6 +41,7 @@ class LoopsDataset(Dataset):
 class ToTensor(object):
     def __call__(self, sample):
         image, loops, text = sample['image'], sample['loops'], sample['text']
+         
         if len(list(image.shape)) == 3:#if the image has a color channel
             image = image[:,:,:3]#get rid of alpha channel
         else:#if the image is grayscale, create color channels
