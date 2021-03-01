@@ -15,7 +15,7 @@ from pandas import DataFrame, concat, read_csv
 import numpy as np
 from sys import argv
 import os
-from sys import exit #helpful for troubleshooting
+from sys import exit #Important for exceptions and troubleshooting
 #Create Dataset
 
 class Net(nn.Module):
@@ -87,6 +87,10 @@ def main(args):
     loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
     dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = 4)
 
+    if len(loops_dataset) != len(os.listdir("./data/images")):
+        print(f"Found %d entries and %d images. Killing script" % (len(loops_dataset), len(os.listdir("./data/images"))))
+        exit()
+
     classes = tuple(range(21))
 
     #We use MSELoss here because our output is a vector of length 21
@@ -112,11 +116,10 @@ def main(args):
 
     for epoch in range(e):  # loop over the dataset multiple times
         print(f"Current Epoch: %d" % epoch)
+        print("\tBatch\tLoss")
         running_loss = 0.0
         for i, data in enumerate(dataloader, 0):
-            print("\tBatch\tLoss")
             inputs, loops, text = data['image'], data['loops'], data['text']
-
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, loops)
