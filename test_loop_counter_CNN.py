@@ -12,6 +12,7 @@ from train_loop_counter_CNN import Net
 from data.dataset_definitions import LoopsDataset, ToTensor
 from sys import argv
 import numpy as np
+import pandas as pd
 
 def main(args):
     b = 1000
@@ -29,13 +30,14 @@ def main(args):
     print("Network Loaded\n")
 
     print("Loading Dataset")
-    loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
+    loops_dataset = LoopsDataset(csv_file='data/test_dat.csv', root_dir='data/test_images/', transform = transforms.Compose([ToTensor()]))
     testloader = DataLoader(loops_dataset, batch_size=1000, shuffle=False, num_workers=2)
     print("Dataset Loaded\n")
 
     print("Testing Network")
     correct = 0
     total = 0
+    all_predictions, all_loops = [], []
     with torch.no_grad():
         for data in testloader:
             images, loops, text = data['image'], data['loops'], data['text']
@@ -47,12 +49,17 @@ def main(args):
             #correct += (predicted == loops).sum().item()
 
             #For one-hot-encoded loss functions (MSE, . . .)
-            max_pred = np.array([max([(v,i) for i,v in enumerate(predicted[j])]) for j in range(len(predicted))])
-            max_loop = np.array([max([(v,i) for i,v in enumerate(loops[j])]) for j in range(len(loops))])
+            max_pred = np.array([max([(v,i) for i,v in enumerate(predicted[j])])[1] for j in range(len(predicted))])
+            max_loop = np.array([max([(v,i) for i,v in enumerate(loops[j])])[1] for j in range(len(loops))])
             correct += (max_pred == max_loop).sum()
-            
-            
-    print('Accuracy of the network on the 1000 test images: %d %%' % (100 * correct / total))
+            all_predictions += list(max_pred)
+            all_loops += list(max_loop)
+
+    print('Accuracy of the network on the %d test images: %.2f%%' % (len(pd.read_csv("./data/test_dat.csv")), 100 * correct / total))
+    print(f"Average guess: %.2f" % (np.array(all_predictions).mean()))
+    print(f"SD of guesses: %.2f" % (np.array(all_predictions).var()**.5))
+
+    pd.DataFrame(all_loops, columns = ["loops"]).assign(guess = all_predictions).to_csv("./guesses.csv", index = False)
 
 if __name__ == '__main__':
     main(argv[1:])
