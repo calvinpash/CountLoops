@@ -1,9 +1,3 @@
-'''
-Download images using data in dat.csv
-
-Call:
-python download.py (test?: t for true) (display?: d for true) (append: + for True)
-'''
 from requests import get
 import os
 from os import listdir, mkdir

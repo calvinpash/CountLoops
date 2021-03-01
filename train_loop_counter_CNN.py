@@ -1,8 +1,3 @@
-'''
-Train neural network to estimate the number of enclosed spaces in a given text image
-To Call:
-python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (one-hot = FALSE: hot|[^(hot)] ) (batch size = 1000: b[0-9]+) (num_workers = 4: nw[0-9]+)(output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
-'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

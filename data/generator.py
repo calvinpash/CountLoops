@@ -1,10 +1,3 @@
-'''
-Generate a given number of dummy images
-Generate corresponding csv file with number of loops
-
-Call:
-python generator.py [n] (test?: t for true) (append: + for True) (display?: d for true)
-'''
 from random import triangular, randint
 from requests import get
 from string import printable
@@ -36,8 +29,6 @@ def main(args):
             d = True
         elif arg == "t":
             t = True
-        elif arg == "+":
-            append = True
         else:
             print(f"Argument '%s' ignored" % str(arg))
     target = "./" + ("test_" if t else "") + "dat.csv"
