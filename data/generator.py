@@ -21,15 +21,27 @@ chars = chars[:91] + chars[92:]#Get rid of |
 loops = [int(i) for i in list("1000101021110110100000001110000000001201000000000011110000000000122200000000000000010000000000")]
 
 def main(args):
-    n = int(args[0])
-    disp = (args[-1] == "d" or
-        (len(args) > 2 and args[-2] == "d") or
-        (len(args) > 3 and args[-3] == "d"))
-    test = (args[-1] == "t" or
-        (len(args) > 2 and args[-2] == "t") or
-        (len(args) > 3 and args[-3] == "t"))
-    target = "./" + ("test_" if test else "") + "dat.csv"
-    append = (args[-1] == "+" and os.path.exists(target))
+    n = 100
+    d = False
+    t = False
+    append = False
+    for arg in args:#Takes in command line args
+        try: arg = int(arg)
+        except: pass
+        if type(arg) == int:
+            n = arg
+        elif arg == "+":
+            append = True
+        elif arg == "d":
+            d = True
+        elif arg == "t":
+            t = True
+        elif arg == "+":
+            append = True
+        else:
+            print(f"Argument '%s' ignored" % str(arg))
+    target = "./" + ("test_" if t else "") + "dat.csv"
+    append = (append and os.path.exists(target))
     offset = 0
     #if we're appending, we want the indices to start at the appropriate row
     if append:
@@ -42,7 +54,7 @@ def main(args):
     print(f"Target CSV: %s\n" % target)
 
     print("Generating...")
-    if disp:
+    if d:
         print("Index\tLoops\tText")
 
     for i in range(offset, n + offset):
@@ -53,7 +65,7 @@ def main(args):
         while "/." in text:
             text = text.replace("/.", "./")
         count = sum([loops[i] for i in nums])
-        if disp:
+        if d:
             print("%d\t%d\t%s" % (i, count, text))
 
         #Generate foreground and background with 1 or 0 color channels similar

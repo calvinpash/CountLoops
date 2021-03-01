@@ -11,16 +11,23 @@ from sys import argv
 from pandas import read_csv
 
 def main(args):
-    disp = (args[-1] == "d" or
-        (len(args) > 1 and args[-2] == "d") or
-        (len(args) > 2 and args[-3] == "d"))
-    test = (args[-1] == "t" or
-        (len(args) > 1 and args[-2] == "t") or
-        (len(args) > 2 and args[-3] == "t"))
-    target = "./" + ("test_" if test else "") + "images"
-    targetcsv = "./" + ("test_" if test else "") + "dat.csv"
-    append = (len(args) > 0 and (args[-1] == "+"))
-    offset = 1#1 because of the first line of the csv
+    d = False
+    t = False
+    append = False
+    for arg in args:#Takes in command line args
+        if arg == "+":
+            append = True
+        elif arg == "d":
+            d = True
+        elif arg == "t":
+            t = True
+        else:
+            print(f"Argument '%s' ignored" % str(arg))
+    target = "./" + ("test_" if t else "") + "images"
+    targetcsv = "./" + ("test_" if t else "") + "dat.csv"
+    append = (append and os.path.exists(target))
+
+    offset = 0
     if append:
         #Get current count of image files in folder
         offset += len([i for i in listdir(target) if i.endswith(".png")])
@@ -29,13 +36,12 @@ def main(args):
     if not os.path.exists(target):
         mkdir(target)
 
-
-    print(f"Downloading %d entries" % (offset-1))
+    print(f"Downloading %d entries" % (len(read_csv(targetcsv)) - offset))
     print(f"Appending: %r" % append)
     print(f"Target folder: %s\n" % target)
 
-    print("Downloading...\n")
-    if disp:
+    print("Downloading...")
+    if d:
         print("Index\tText")
     with open(targetcsv) as file:
         csv = read_csv(file)
@@ -43,7 +49,7 @@ def main(args):
             #Obviously, this isn't practical for a large scale, but this is a quick and dirty way to get a small set of random images
             url = f"https://dummyimage.com/64.png/%s/%s/&text=%s" % (row[3], row[4], row[1])
             open(f"%s/%s.png" % (target,row[0]),"wb").write(get(url).content)
-            if disp:
+            if d:
                 print("%s\t%s" % (row[0], row[1]))
     print("Downloading Finished")
 
