@@ -1,7 +1,7 @@
 '''
 Train neural network to estimate the number of enclosed spaces in a given text image
 To Call:
-python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (batch size = 1000: b[0-9]+) (output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
+python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (batch size = 1000: b[0-9]+) (num_workers = 4: nw[0-9]+)(output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
 '''
 import torch
 import torch.nn as nn
@@ -23,7 +23,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 8)#3 input channels, 12 output, 8x8 kernel
         self.pool = nn.MaxPool2d(3, 3)#summarizes the most activated presence of a feature
-        #This
+        
         self.conv2 = nn.Conv2d(6, 16, 8)
         self.fc1 = nn.Linear(16 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
@@ -48,6 +48,7 @@ class Net(nn.Module):
 def main(args):
     e = 100
     b = 1000
+    nw = 4
     append = False
     o = False
     o_append = False
@@ -65,6 +66,9 @@ def main(args):
                 o_append = True
         elif arg[0] == "b":
             try: b = int(arg[1:])
+            except: pass
+        elif arg[:2] == "nw":
+            try: nw = int(arg[2:])
             except: pass
         elif arg[0] == ".":
             target = arg
@@ -85,7 +89,7 @@ def main(args):
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
-    dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = 4)
+    dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = nw)
 
     if len(loops_dataset) != len(os.listdir("./data/images")):
         print(f"Found %d entries and %d images. Killing script" % (len(loops_dataset), len(os.listdir("./data/images"))))
@@ -99,13 +103,21 @@ def main(args):
 
 
     if o:
-        if not os.path.exists(f"./loss/%s" % str(criterion)[:-6]):
-            os.mkdir(f"loss/%s" % str(criterion)[:-6])
-        settings = f"e%db%dnw%d" % (e, b, dataloader.num_workers)
-        loss_file = f"./loss/%s/%s_%s.csv" % (str(criterion)[:-6], target[target.rindex("/")+1:target.rindex(".")], settings)
+        settings = f"e%db%dnw%d" % (e, b, nw)
+        loss_file = f"./loss/%s/%s/%s.csv" % (str(criterion)[:-6],
+                                                settings,
+                                                target[target.rindex("/")+1:target.rindex(".")])
+
+        #Make file structure if missing
+        split_addy = loss_file.split("/")
+        for i in range(len(split_addy)-1):
+            if not os.path.exists("/".join(split_addy[:i+1])):
+                os.mkdir("/".join(split_addy[:i+1]))
+
         loss_output = []#epoch, batch, loss
         if not os.path.exists(loss_file):
             o_append = False
+            open(loss_file,'x')
         elif not o_append:
             print("These settings will overwrite an existing loss output file.")
             overwrite = input("Are you sure? (Y/N): ")
