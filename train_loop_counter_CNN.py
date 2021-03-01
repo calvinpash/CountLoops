@@ -1,7 +1,7 @@
 '''
 Train neural network to estimate the number of enclosed spaces in a given text image
 To Call:
-python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (batch size = 1000: b[0-9]+) (num_workers = 4: nw[0-9]+)(output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
+python train_loop_counter_CNN.py (epoch = 100: [0-9]+) (one-hot = FALSE: hot|[^(hot)] ) (batch size = 1000: b[0-9]+) (num_workers = 4: nw[0-9]+)(output? = False: o[+]?|[^o]) (model = "./loops_counter_net.pth": \./.+\.pth)(append?: +|[^+] )
 '''
 import torch
 import torch.nn as nn
@@ -13,9 +13,8 @@ from torchvision import transforms, utils
 from data.dataset_definitions import LoopsDataset, ToTensor
 from pandas import DataFrame, concat, read_csv
 import numpy as np
-from sys import argv
+from sys import argv, exit
 import os
-from sys import exit #Important for exceptions and troubleshooting
 #Create Dataset
 
 class Net(nn.Module):
@@ -52,6 +51,7 @@ def main(args):
     append = False
     o = False
     o_append = False
+    hot = False
     target = "./loops_counter_net.pth"
     for arg in args:#Takes in command line arguments; less sugar but more rigorous
         try: arg = int(arg)
@@ -64,6 +64,8 @@ def main(args):
             o = True
             if len(arg) > 1 and arg[1] == "+":
                 o_append = True
+        elif arg == "hot":
+            hot = True
         elif arg[0] == "b":
             try: b = int(arg[1:])
             except: pass
@@ -85,10 +87,13 @@ def main(args):
     # print(f"Append to model: %r" % append)
 
     net = Net()
-    criterion = nn.CrossEntropyLoss()
+    if hot:
+        criterion = nn.MSELoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
-    loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
+    loops_dataset = LoopsDataset(hot=hot, csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
     dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = nw)
 
     if len(loops_dataset) != len(os.listdir("./data/images")):
