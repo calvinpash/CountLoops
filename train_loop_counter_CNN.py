@@ -23,7 +23,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 8)#3 input channels, 12 output, 8x8 kernel
         self.pool = nn.MaxPool2d(3, 3)#summarizes the most activated presence of a feature
-        
+
         self.conv2 = nn.Conv2d(6, 16, 8)
         self.fc1 = nn.Linear(16 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
@@ -85,7 +85,7 @@ def main(args):
     # print(f"Append to model: %r" % append)
 
     net = Net()
-    criterion = nn.MSELoss()
+    criterion = nn.CrossEntropyLoss()
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(csv_file='data/dat.csv', root_dir='data/images/', transform = transforms.Compose([ToTensor()]))
@@ -160,6 +160,7 @@ def main(args):
         df_output = df_output.assign(train_number = np.full(len(loss_output), len(df.train_number.unique())))
         df = concat([df, df_output])
         df.to_csv(loss_file, index = False)
+
     torch.save(net.state_dict(), target)
 
 if __name__ == '__main__':

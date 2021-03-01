@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from train_loop_counter_CNN import Net
 from data.dataset_definitions import LoopsDataset, ToTensor
-from sys import argv
+from sys import argv, exit
 import numpy as np
 import pandas as pd
 
@@ -42,23 +42,27 @@ def main(args):
         for data in testloader:
             images, loops, text = data['image'], data['loops'], data['text']
             outputs = net(images)
-            #_,
-            predicted = outputs.data#add the _, if one-hot-encoded
-            total += loops.size(0)
-            #For non-one-hot-encoded loss functions (CrossEntropy, . . .)
-            #correct += (predicted == loops).sum().item()
 
+            predicted = outputs.data#add the _, if one-hot-encoded
+            predicted = np.array([max([(v,i) for i,v in enumerate(predicted[j])])[1] for j in range(len(predicted))])
+
+            total += loops.size(0)
+
+            #For non-one-hot-encoded loss functions (CrossEntropy, . . .)
+            loops = np.array(loops)
             #For one-hot-encoded loss functions (MSE, . . .)
-            max_pred = np.array([max([(v,i) for i,v in enumerate(predicted[j])])[1] for j in range(len(predicted))])
-            max_loop = np.array([max([(v,i) for i,v in enumerate(loops[j])])[1] for j in range(len(loops))])
-            correct += (max_pred == max_loop).sum()
-            all_predictions += list(max_pred)
-            all_loops += list(max_loop)
+            # loops = np.array([max([(v,i) for i,v in enumerate(loops[j])])[1] for j in range(len(loops))])
+
+            correct += (predicted == loops).sum()
+
+            all_predictions += list(predicted)
+            all_loops += list(loops)
 
     print('Accuracy of the network on the %d test images: %.2f%%' % (len(pd.read_csv("./data/test_dat.csv")), 100 * correct / total))
     print(f"Average guess: %.2f" % (np.array(all_predictions).mean()))
     print(f"SD of guesses: %.2f" % (np.array(all_predictions).var()**.5))
 
+    open("./guesses.csv", 'w')
     pd.DataFrame(all_loops, columns = ["loops"]).assign(guess = all_predictions).to_csv("./guesses.csv", index = False)
 
 if __name__ == '__main__':
