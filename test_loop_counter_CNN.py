@@ -11,6 +11,7 @@ from torchvision import transforms
 from train_loop_counter_CNN import Net
 from data.dataset_definitions import LoopsDataset, ToTensor
 from sys import argv
+import numpy as np
 
 def main(args):
     b = 1000
@@ -39,10 +40,18 @@ def main(args):
         for data in testloader:
             images, loops, text = data['image'], data['loops'], data['text']
             outputs = net(images)
-            _, predicted = torch.max(outputs.data, 1)
+            #_,
+            predicted = outputs.data#add the _, if one-hot-encoded
             total += loops.size(0)
-            correct += (predicted == loops).sum().item()
+            #For non-one-hot-encoded loss functions (CrossEntropy, . . .)
+            #correct += (predicted == loops).sum().item()
 
+            #For one-hot-encoded loss functions (MSE, . . .)
+            max_pred = np.array([max([(v,i) for i,v in enumerate(predicted[j])]) for j in range(len(predicted))])
+            max_loop = np.array([max([(v,i) for i,v in enumerate(loops[j])]) for j in range(len(loops))])
+            correct += (max_pred == max_loop).sum()
+            
+            
     print('Accuracy of the network on the 1000 test images: %d %%' % (100 * correct / total))
 
 if __name__ == '__main__':
