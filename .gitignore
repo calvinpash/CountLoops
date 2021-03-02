@@ -4,5 +4,15 @@ data/dat.csv
 data/test_images
 data/test_dat.csv
 
+#loss folder
+loss
+
+#Any guess files
+**/*guesses.csv
+
 #Model file
 loops_counter_net.pth
+**/*.pth
+
+#pycaches
+**/__pycache__
