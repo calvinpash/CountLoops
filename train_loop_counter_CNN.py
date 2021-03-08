@@ -15,22 +15,32 @@ import os
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 8)#3 input channels, 12 output, 8x8 kernel
-        self.pool = nn.MaxPool2d(3, 3)#summarizes the most activated presence of a feature
-
-        self.conv2 = nn.Conv2d(6, 16, 8)
+        self.conv1 = nn.Conv2d(3, 6, 8, padding = 4)#3 input channels, 12 output, 8x8 kernel
+        self.pool = nn.MaxPool2d(4, 4)#summarizes the most activated presence of a feature
+        self.conv2 = nn.Conv2d(6, 16, 8, padding = 4)
         self.fc1 = nn.Linear(16 * 4 * 4, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 21)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
+        x = self.conv1(x)
+        # print(x.shape)#6x57x57->6x19x19
+        x = self.pool(F.relu(x))
+        # print(x.shape)#6x57x57->6x19x19
+        x = self.conv2(x)
+        # print(x.shape)#16x12x12->16x4x4
+        x = self.pool(F.relu(x))
+        # print(x.shape)#16x12x12->16x4x4
         x = x.view(-1, self.num_flat_features(x))
+        # print(x.shape)
         x = F.relu(self.fc1(x))
+        # print(x.shape)
         x = F.relu(self.fc2(x))
+        # print(x.shape)
         x = self.fc3(x)
+        # print(x.shape)
         return x
+
 
     def num_flat_features(self, x):
         size = x.size()[1:]  #all dimensions except the batch dimension
@@ -81,7 +91,10 @@ def main(args):
     print(f"Model file: %s" % target)
     # print(f"Append to model: %r" % append)
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: %s" % device)
     net = Net()
+    net.to(device)
     if hot:
         criterion = nn.MSELoss()
     else:
@@ -131,7 +144,8 @@ def main(args):
         print("\tBatch\tLoss")
         running_loss = 0.0
         for i, data in enumerate(dataloader, 0):
-            inputs, loops, text = data['image'], data['loops'], data['text']
+            inputs, loops, text = data['image'].to(device), data['loops'].to(device), data['text']
+            print(type(inputs), type(loops), type(text))
             optimizer.zero_grad()
             outputs = net(inputs)
             loss = criterion(outputs, loops)
