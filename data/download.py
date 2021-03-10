@@ -41,7 +41,7 @@ def main(args):
         csv = read_csv(file)
         for row in csv[offset:].iloc:
             #Obviously, this isn't practical for a large scale, but this is a quick and dirty way to get a small set of random images
-            url = f"https://dummyimage.com/64.png/%s/%s/&text=%s" % (row[4], row[3], row[1])
+            url = f"https://dummyimage.com/64.png/%s/%s/&text=?%s" % (row[4], row[3], row[1])
             open(f"%s/%s.png" % (target,row[0]),"wb").write(get(url).content)
             if d:
                 print("%s\t%s" % (row[0], row[1]))
