@@ -141,8 +141,8 @@ def main(args):
     o_append = False
     hot = False
     target = "./loops_counter_net.pth"
-    data_file='data/dat.csv'
-    data_dir='data/images/'
+    data_file='data/test_dat.csv'
+    data_dir='data/test_images/'
     model_num = -1
     incr_size = 25
     incr_target = "./incr_model"
@@ -206,7 +206,7 @@ def main(args):
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(hot=hot, csv_file=data_file, root_dir=data_dir, transform = transforms.Compose([ToTensor()]))
-    dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = nw)
+    dataloader = DataLoader(loops_dataset, batch_size = b, num_workers = nw)
 
     if len(loops_dataset) != len(os.listdir(data_dir)):
         print(f"Found %d entries and %d images. Killing script" % (len(loops_dataset), len(os.listdir(data_dir))))
