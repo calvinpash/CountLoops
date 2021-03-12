@@ -11,11 +11,16 @@ import pandas as pd
 def main(args):
     b = 1000
     nw = 4
+    e = 12
     o = False
     hot = False
     target = "./loops_counter_net.pth"
     for arg in args:#Takes in command line arguments; less sugar but more rigorous
-        if arg[0] == "o":
+        try: arg = int(arg)
+        except: pass
+        if type(arg) == int:
+            e = arg
+        elif arg[0] == "o":
             o = True
         elif arg[0] == "b":
             try: b = int(arg[1:])
@@ -30,26 +35,28 @@ def main(args):
         else:
             print(f"Argument '%s' ignored" % str(arg))
 
-    print(f"Batch Size: %d" % b)
+    if b != 1000:
+        print(f"Batch Size: %d" % b)
     print(f"Output Loss: %r" % o)
     if hot:
         print("One-Hot encoding: True")
     print(f"Model file: %s\n" % target)
 
-    print("Loading Network")
-    net = Net()
+    #print("Loading Network")
+    net = Net(e)
     net.load_state_dict(torch.load(target))
-    print("Network Loaded\n")
+    #print("Network Loaded\n")
 
-    print("Loading Dataset")
+    #print("Loading Dataset")
     loops_dataset = LoopsDataset(csv_file='data/test_dat.csv', root_dir='data/test_images/', transform = transforms.Compose([ToTensor()]))
     testloader = DataLoader(loops_dataset, batch_size=b, shuffle=False, num_workers=nw)
-    print("Dataset Loaded\n")
+    #print("Dataset Loaded\n")
 
-    print("Testing Network")
+    #print("Testing Network")
     correct = 0
     total = 0
     all_predictions, all_loops, all_scores = [],[],[]
+   
     with torch.no_grad():
         for data in testloader:
             images, loops, text = data['image'], data['loops'], data['text']
@@ -78,7 +85,7 @@ def main(args):
     if o:
         open(f"./%s_guesses.csv" % target, 'w')
         guess_output = pd.DataFrame(all_loops, columns = ["loops"]).assign(guess = all_predictions)
-        scores_output = pd.DataFrame(all_scores, columns = [f"s%d" % i for i in range(21)])
+        scores_output = pd.DataFrame(all_scores, columns = [f"s%d" % i for i in range(e)])
         guess_output.join(scores_output).to_csv(f"./%s_guesses.csv" % target[:-4], index = False)
 
 if __name__ == '__main__':
