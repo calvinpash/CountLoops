@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from train_loop_counter_CNN import Net
-from data.dataset_definitions import LoopsDataset, ToTensor
+from train_loop_counter_CNN import Net, LoopsDataset, ToTensor
 from sys import argv, exit
 import numpy as np
 import pandas as pd

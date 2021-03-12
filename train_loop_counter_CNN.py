@@ -5,7 +5,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 import torchvision
 from torchvision import transforms, utils
-# from data.dataset_definitions import LoopsDataset, ToTensor
 from pandas import DataFrame, concat, read_csv
 import numpy as np
 from sys import argv, exit
@@ -131,7 +130,6 @@ def make_folder(addy):
             os.mkdir("/".join(split_addy[:i+1]))
             print("/".join(split_addy[:i+1]))
 
-        
 def main(args):
     e = 100
     b = 1000
