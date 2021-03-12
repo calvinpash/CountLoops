@@ -13,6 +13,7 @@ Args:
 *    one-hot = FALSE:    hot | [^(hot)]
 *    num_workers = 4:    nw[0-9]+
 *    output = False:     o[+]? | [^o]
+*    learn rate = 0.01:    lr0\.[0-9]+
 *    model = "./loops_counter_net.pth": \./.+\.pth
 
 ### test_loop_counter_CNN
@@ -26,6 +27,7 @@ Args:
 *    one-hot = FALSE:    hot | [^(hot)]
 *    num_workers = 4:    nw[0-9]+
 *    output = False:     o | [^o]
+*    net size = 12:      [0-9]+
 *    model = "./loops_counter_net.pth": \./.+\.pth
 
 ### data/download
