@@ -42,7 +42,7 @@ class Net(nn.Module):
         #print(size4)
         self.fc1 = nn.Linear(8 * size4 * size4, 120)
         self.fc2 = nn.Linear(120, 88)
-        self.fc3 = nn.Linear(88,8)
+        self.fc3 = nn.Linear(88,12)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -122,6 +122,16 @@ class ToTensor(object):
                     'loops': loops,
                     'text': text}
 
+def make_folder(addy):
+    #Make file structure if missing
+    print("Makefolder")
+    split_addy = addy.split("/")
+    for i in range(len(split_addy)-int("." in split_addy[-1])):
+        if not os.path.exists("/".join(split_addy[:i+1])):
+            os.mkdir("/".join(split_addy[:i+1]))
+            print("/".join(split_addy[:i+1]))
+
+
 def main(args):
     e = 100
     b = 1000
@@ -133,6 +143,9 @@ def main(args):
     target = "./loops_counter_net.pth"
     data_file='data/test_dat.csv'
     data_dir='data/test_images/'
+    model_num = -1
+    incr_size = 25
+    incr_target = "./incr_model"
     for arg in args:#Takes in command line arguments; less sugar but more rigorous
         try: arg = int(arg)
         except: pass
@@ -154,6 +167,15 @@ def main(args):
             except: pass
         elif arg[0] == ".":
             target = arg
+        elif arg[0] == "i":
+            model_num = 0
+            if len(arg) > 1:
+                for i in range(4):
+                    try: incr_size = int(arg[1:1+i])
+                    except: continue
+            if "." in arg:
+                incr_target = arg[arg.index("."):]
+                make_folder(incr_target)
         else:
             print(f"Argument '%s' ignored" % str(arg))
 
@@ -165,9 +187,12 @@ def main(args):
     print(f"Output Loss: %r" % o)
     print(f"Model file: %s" % target)
     # print(f"Append to model: %r" % append)
-
+    if model_num >= 0:
+        print(f"\nIncremental Model saving ON")
+        print(f"Saving to: %s" % incr_target)
+        print(f"Every %d epochs\n" % incr_size)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    vals=np.ones(8)
+    vals=np.ones(12)
     vals=vals/np.linalg.norm(vals)
     weights=torch.FloatTensor(vals).to(device)
 
@@ -181,7 +206,7 @@ def main(args):
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(hot=hot, csv_file=data_file, root_dir=data_dir, transform = transforms.Compose([ToTensor()]))
-    dataloader = DataLoader(loops_dataset, batch_size = b, shuffle = True, num_workers = nw)
+    dataloader = DataLoader(loops_dataset, batch_size = b, num_workers = nw)
 
     if len(loops_dataset) != len(os.listdir(data_dir)):
         print(f"Found %d entries and %d images. Killing script" % (len(loops_dataset), len(os.listdir(data_dir))))
@@ -190,7 +215,7 @@ def main(args):
     classes = tuple(range(21))
 
     #We use MSELoss here because our output is a vector of length 21
-    optimizer = optim.SGD(net.parameters(), lr=0.1)#,momentum = 0.9)
+    optimizer = optim.SGD(net.parameters(), lr=0.05)#,momentum = 0.9)
     print("Loaded\n")
 
 
@@ -199,13 +224,9 @@ def main(args):
         settings = f"e%db%dnw%d" % (e, b, nw)
         loss_file = f"./loss/%s/%s/%s.csv" % (str(criterion)[:-6],
                                                 settings,
-                                                target[target.rindex("/")+1:target.rindex(".")])
+                                                (target[target.rindex("/")+1:target.rindex(".")] if model_num < 0 else incr_target[incr_target.rindex("/")+1:]))
 
-        #Make file structure if missing
-        split_addy = loss_file.split("/")
-        for i in range(len(split_addy)-1):
-            if not os.path.exists("/".join(split_addy[:i+1])):
-                os.mkdir("/".join(split_addy[:i+1]))
+        make_folder(loss_file)
 
         loss_output = []#epoch, batch, loss
         if not os.path.exists(loss_file):
@@ -241,7 +262,9 @@ def main(args):
             #     print('[%d, %5d] loss: %.3f' %
             #           (epoch + 1, i + 1, running_loss / 200))
             #     running_loss = 0.0
-
+        if model_num >= 0 and epoch % incr_size == 0:
+            torch.save(net.state_dict(), f"%s/%d.pth" % (incr_target, model_num))
+            model_num += 1
     print('Finished Training')
 
     if o:
