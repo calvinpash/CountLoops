@@ -13,7 +13,7 @@ import os
 #Create Dataset
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, output = 12):
         super(Net, self).__init__()
         padding1=3
         filter1=7
@@ -41,7 +41,7 @@ class Net(nn.Module):
         #print(size4)
         self.fc1 = nn.Linear(8 * size4 * size4, 120)
         self.fc2 = nn.Linear(120, 88)
-        self.fc3 = nn.Linear(88,12)
+        self.fc3 = nn.Linear(88,output)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -62,6 +62,9 @@ class Net(nn.Module):
             num_features *= s
         return num_features
 
+    def get_output_size(self):
+        return self.fcs.out_features
+    
 class LoopsDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transform=None, hot = False):
@@ -144,6 +147,7 @@ def main(args):
     model_num = -1
     incr_size = 25
     incr_target = "./incr_model"
+    lr = 0.01
     for arg in args:#Takes in command line arguments; less sugar but more rigorous
         try: arg = int(arg)
         except: pass
@@ -174,6 +178,9 @@ def main(args):
             if "." in arg:
                 incr_target = arg[arg.index("."):]
                 make_folder(incr_target)
+        elif len(arg) > 1 and arg[:2] == "lr":
+             try: lr = float(arg[3:])
+             except: pass
         else:
             print(f"Argument '%s' ignored" % str(arg))
 
@@ -189,6 +196,7 @@ def main(args):
         print(f"\nIncremental Model saving ON")
         print(f"Saving to: %s" % incr_target)
         print(f"Every %d epochs\n" % incr_size)
+        
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     vals=np.ones(12)
     vals=vals/np.linalg.norm(vals)
@@ -213,7 +221,7 @@ def main(args):
     classes = tuple(range(21))
 
     #We use MSELoss here because our output is a vector of length 21
-    optimizer = optim.SGD(net.parameters(), lr=0.05)#,momentum = 0.9)
+    optimizer = optim.SGD(net.parameters(), lr=lr)#,momentum = 0.9)
     print("Loaded\n")
 
 
