@@ -15,14 +15,14 @@ import os
 class Net(nn.Module):
     def __init__(self, output = 12):
         super(Net, self).__init__()
-        padding1=3
-        filter1=7
+        padding1=0
+        filter1=3
 
-        self.conv1 = nn.Conv2d(3, 16, filter1, padding = padding1)#3 input channels, 12 output, 8x8 kernel
-        size1=64+2*padding1-(filter1-1)
+        self.conv1 = nn.Conv2d(3, 4, filter1, padding = padding1)#3 input channels, 12 output, 8x8 kernel
+        size1=16+2*padding1-(filter1-1)
         #print(size1)
-        pool_size=8 #pooling kernel
-        pool_stride=8 #pooling size
+        pool_size=2 #pooling kernel
+        pool_stride=2 #pooling size
 
         self.pool = nn.MaxPool2d(pool_size, pool_stride)#summarizes the most activated presence of a feature
 
@@ -32,23 +32,29 @@ class Net(nn.Module):
         padding3=2
         filter3=5
 
-        self.conv2 = nn.Conv2d(16, 8, filter3, padding = padding3)
+        self.conv2 = nn.Conv2d(4, 4, filter3, padding = padding3)
         size3=size2+2*padding3-(filter3-1)
         #print(size3)
 
         #self.fc1 = nn.Linear(16 * 4 * 4, 120)
         size4=np.floor((pool_size/2+size3)/pool_stride).astype(int)
-        #print(size4)
-        self.fc1 = nn.Linear(8 * size4 * size4, 120)
-        self.fc2 = nn.Linear(120, 88)
-        self.fc3 = nn.Linear(88,output)
+        #print(f"%d\t%d\t%d\t%d" % (size1, size2, size3, size4))
+        size4 = 15
+        self.fc1 = nn.Linear(4 * size4 * size4, 120)
+        self.fc2 = nn.Linear(120, 80)
+        self.fc3 = nn.Linear(80,output)
 
     def forward(self, x):
         x = self.conv1(x)
+        #print(x.shape)
         x = self.pool(F.relu(x))
+        #print(x.shape)
         x = self.conv2(x)
+        #print(x.shape)
         x = self.pool(F.relu(x))
+        #print(x.shape)
         x = x.view(-1, self.num_flat_features(x))
+        #print(x.shape)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -142,8 +148,8 @@ def main(args):
     o_append = False
     hot = False
     target = "./loops_counter_net.pth"
-    data_file='data/test_dat.csv'
-    data_dir='data/test_images/'
+    data_file='data/dat.csv'
+    data_dir='data/images/'
     model_num = -1
     incr_size = 25
     incr_target = "./incr_model"
@@ -191,24 +197,32 @@ def main(args):
     print(f"Batch Size: %d" % b)
     print(f"Output Loss: %r" % o)
     print(f"Model file: %s" % target)
-    # print(f"Append to model: %r" % append)
+    print(f"Append to model: %r" % append)
     if model_num >= 0:
         print(f"\nIncremental Model saving ON")
         print(f"Saving to: %s" % incr_target)
         print(f"Every %d epochs\n" % incr_size)
         
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    vals=np.ones(12)
-    vals=vals/np.linalg.norm(vals)
-    weights=torch.FloatTensor(vals).to(device)
 
     print(f"Using device: %s" % device)
     net = Net()
-    net.to(device)
-    if hot:
-        criterion = nn.MSELoss(weight = weights)
+    if append and os.path.exists(target):
+        net.load_state_dict(torch.load(target))
+        if hot:
+            criterion = nn.MSELoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
     else:
-        criterion = nn.CrossEntropyLoss(weight = weights)
+        vals=np.ones(12)
+        vals=vals/np.linalg.norm(vals)
+        weights=torch.FloatTensor(vals).to(device)
+        if hot:
+            criterion = nn.MSELoss(weight = weights)
+        else:
+            criterion = nn.CrossEntropyLoss(weight = weights)
+
+    net.to(device)
     print("Loading Data")
     # device = torch.device('cuda' if torch.cuda)
     loops_dataset = LoopsDataset(hot=hot, csv_file=data_file, root_dir=data_dir, transform = transforms.Compose([ToTensor()]))
@@ -246,10 +260,19 @@ def main(args):
                 print("Good choice, buddy\n")
         print(f"Outputting loss to: %s\n" % loss_file)
 
+    compact_print = (len(loops_dataset)/b > 10)
+    if compact_print:
+        print("Printing compactly. %d Batches per Epoch" % np.floor(len(loops_dataset)/b))
+    
     for epoch in range(e):  # loop over the dataset multiple times
         print(f"Current Epoch: %d" % epoch)
-        print("\tBatch\tLoss")
         running_loss = 0.0
+        if compact_print:
+            losses = []
+            acces = []
+        else:
+            print("\tBatch\tLoss\tAccuracy\t")
+
         for i, data in enumerate(dataloader, 0):
             inputs, loops, text = data['image'].to(device), data['loops'].to(device), data['text']
             # print(type(inputs), type(loops), type(text))
@@ -257,12 +280,20 @@ def main(args):
             outputs = net(inputs)
             loss = criterion(outputs, loops)
 
-            print(f"\t%d\t%f" % (i, loss.sum().item()))
-            if o:
-                loss_output.append([epoch, i, loss.sum().item()])
+            _, pred = outputs.max(dim=1)
+            correct = int(pred.eq(loops).sum().item())
+            acc = correct / int(loops.size()[0])
+        
+            if compact_print:
+                losses.append(loss.sum().item())
+                acces.append(acc)
+            else:
+                print(f"\t%d\t%.4f\t%.3f" % (i, loss.sum().item(), acc))
+                if o:
+                    loss_output.append([epoch, i, loss.sum().item()])
             loss.backward()
             optimizer.step()
-
+            
             running_loss += loss.item()
             # if i % 200 == 199:    # print every 200 batches
             #     print('[%d, %5d] loss: %.3f' %
@@ -271,15 +302,25 @@ def main(args):
         if model_num >= 0 and epoch % incr_size == 0:
             torch.save(net.state_dict(), f"%s/%d.pth" % (incr_target, model_num))
             model_num += 1
-    print('Finished Training')
+        if compact_print:
+            print("\tMean\tSD")
+            lm, lsd = (np.array(losses).mean(), np.array(losses).var()**.5)
+            am, asd = (np.array(acces).mean(), np.array(acces).var()**.5)
+            print(f"Loss\t%.4f\t%.4f" % (lm, lsd))
+            print(f"Acc\t%.4f\t%.4f" % (am, asd))
+            if o:
+                loss_output.append([epoch, lm, am, lsd, asd])  
+        print('Finished Training')
 
     if o:
         if o_append:
             df = read_csv(loss_file)
+        elif compact_print:
+            df = DataFrame(columns = ["epoch","loss","acc","loss_sd","acc_sd", "train_number"])
         else:
             df = DataFrame(columns = ["epoch","batch","loss", "train_number"])
     # with open(target, "w", newline = '') as csvfile:
-        df_output = DataFrame(loss_output, columns = ["epoch","batch","loss"])
+        df_output = DataFrame(loss_output, columns = (["epoch","loss","acc","loss_sd","acc_sd"] if compact_print else ["epoch","batch","loss"]))
         df_output = df_output.assign(train_number = np.full(len(loss_output), len(df.train_number.unique())))
         df = concat([df, df_output])
         df.to_csv(loss_file, index = False)
