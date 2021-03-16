@@ -18,33 +18,41 @@ class Net(nn.Module):
         padding1=0
         filter1=3
 
-        self.conv1 = nn.Conv2d(3, 4, filter1, padding = padding1)#3 input channels, 12 output, 8x8 kernel
-        size1=16+2*padding1-(filter1-1)
+        self.conv0 = nn.Conv2d(3, 1, 1, padding = 0)#Reduce RGB channels to one value
+        self.conv1 = nn.Conv2d(3, 4, filter1, padding = padding1)
+        size1=64+2*padding1-(filter1-1)
         #print(size1)
         pool_size=2 #pooling kernel
         pool_stride=2 #pooling size
 
         self.pool = nn.MaxPool2d(pool_size, pool_stride)#summarizes the most activated presence of a feature
 
-        size2=np.floor((pool_size/2+size1)/pool_stride).astype(int)
+        size2=np.floor((size1 - pool_size)/pool_stride + 1).astype(int)
         #print(size2)
 
-        padding3=2
-        filter3=5
+        padding2=0
+        filter2=3
 
-        self.conv2 = nn.Conv2d(4, 4, filter3, padding = padding3)
-        size3=size2+2*padding3-(filter3-1)
+        self.conv2 = nn.Conv2d(4, 4, filter2, padding = padding2)
+        size3 = size2+2*padding2-(filter2-1)
         #print(size3)
 
         #self.fc1 = nn.Linear(16 * 4 * 4, 120)
-        size4=np.floor((pool_size/2+size3)/pool_stride).astype(int)
+        size4=np.floor((size3 - pool_size)/pool_stride + 1).astype(int)
         #print(f"%d\t%d\t%d\t%d" % (size1, size2, size3, size4))
-        size4 = 15
-        self.fc1 = nn.Linear(4 * size4 * size4, 120)
+
+        padding3 = 0
+        filter3 = 3
+        self.conv3 = nn.Conv2d(4, 4, filter3, padding = padding3)
+
+        size5 = size4+2*padding3-(filter3-1)
+        self.fc1 = nn.Linear(4 * size5 * size5, 120)
         self.fc2 = nn.Linear(120, 80)
         self.fc3 = nn.Linear(80,output)
 
     def forward(self, x):
+        #x = self.conv0(x)
+        #print(x.shape)
         x = self.conv1(x)
         #print(x.shape)
         x = self.pool(F.relu(x))
@@ -52,6 +60,8 @@ class Net(nn.Module):
         x = self.conv2(x)
         #print(x.shape)
         x = self.pool(F.relu(x))
+        #print(x.shape)
+        x = self.conv3(x)
         #print(x.shape)
         x = x.view(-1, self.num_flat_features(x))
         #print(x.shape)
@@ -231,6 +241,9 @@ def main(args):
     if len(loops_dataset) != len(os.listdir(data_dir)):
         print(f"Found %d entries and %d images. Killing script" % (len(loops_dataset), len(os.listdir(data_dir))))
         exit()
+    if model_num >= 0 and incr_size > e:
+        print("Incremental save size greater than epoch.")
+        exit()
 
     classes = tuple(range(21))
 
@@ -263,6 +276,10 @@ def main(args):
     compact_print = (len(loops_dataset)/b > 10)
     if compact_print:
         print("Printing compactly. %d Batches per Epoch" % np.floor(len(loops_dataset)/b))
+        test_dataset = LoopsDataset(csv_file='data/test_dat.csv', root_dir='data/test_images/', transform = transforms.Compose([ToTensor()]))
+        testloader = DataLoader(test_dataset, batch_size=b, shuffle=False, num_workers=nw)
+        test_acc = []
+
     
     for epoch in range(e):  # loop over the dataset multiple times
         print(f"Current Epoch: %d" % epoch)
@@ -302,6 +319,28 @@ def main(args):
         if model_num >= 0 and epoch % incr_size == 0:
             torch.save(net.state_dict(), f"%s/%d.pth" % (incr_target, model_num))
             model_num += 1
+            all_predictions = []
+
+            correct = 0
+            total = 0
+            with torch.no_grad():
+                for data in testloader:
+                    images, loops = data['image'].to(device), data['loops']
+                    outputs = net(images)
+                    predicted = outputs.data                    
+                    
+                    predicted = np.array([max([(v,i) for i,v in enumerate(predicted[j])])[1] for j in range(len(predicted))])
+                    
+                    total += loops.size(0)                   
+                    loops = np.array(loops)
+                    correct += (predicted == loops).sum()
+                    all_predictions += list(predicted)
+            print('Accuracy on test: %.2f%%' % (100 * correct / total))
+            print(f"Avg guess: %.2f" % (np.array(all_predictions).mean()))
+            print(f"SD of guesses: %.2f" % (np.array(all_predictions).var()**.5))
+            test_acc.append(correct/total)
+
+
         if compact_print:
             print("\tMean\tSD")
             lm, lsd = (np.array(losses).mean(), np.array(losses).var()**.5)
@@ -316,11 +355,12 @@ def main(args):
         if o_append:
             df = read_csv(loss_file)
         elif compact_print:
-            df = DataFrame(columns = ["epoch","loss","acc","loss_sd","acc_sd", "train_number"])
+            df = DataFrame(columns = ["epoch","loss","acc","loss_sd","acc_sd", "test_acc", "train_number"])
+            loss_output = [loss_output[i] + [test_acc[i//incr_size]] for i in range(len(loss_output))]
         else:
             df = DataFrame(columns = ["epoch","batch","loss", "train_number"])
-    # with open(target, "w", newline = '') as csvfile:
-        df_output = DataFrame(loss_output, columns = (["epoch","loss","acc","loss_sd","acc_sd"] if compact_print else ["epoch","batch","loss"]))
+
+        df_output = DataFrame(loss_output, columns = (["epoch","loss","acc","loss_sd","acc_sd", "test_acc"] if compact_print else ["epoch","batch","loss"]))
         df_output = df_output.assign(train_number = np.full(len(loss_output), len(df.train_number.unique())))
         df = concat([df, df_output])
         df.to_csv(loss_file, index = False)
