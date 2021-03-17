@@ -11,13 +11,13 @@ from sys import argv, exit
 from PIL import Image
 import os
 #Create Dataset
-#test
+
 class Net(nn.Module):
     def __init__(self, output = 12):
         super(Net, self).__init__()
         padding1=0
         filter1=3
-        output1 = 8
+        output1 = 16
         
         self.conv0 = nn.Conv2d(3, 1, 1, padding = 0)#Reduce RGB channels to one value
         self.conv1 = nn.Conv2d(3, output1, filter1, padding = padding1)
@@ -33,7 +33,7 @@ class Net(nn.Module):
 
         padding2=0
         filter2=3
-        output2=8
+        output2=16
 
         self.conv2 = nn.Conv2d(output1, output2, filter2, padding = padding2)
         size3 = size2+2*padding2-(filter2-1)
@@ -44,14 +44,20 @@ class Net(nn.Module):
 
 
         padding3 = 0
-        filter3 = 1
+        filter3 = 3
         output3 = 4
         self.conv3 = nn.Conv2d(output2, output3, filter3, padding = padding3)
 
         size5 = size4+2*padding3-(filter3-1)
         
         size6 = np.floor((size5 - pool_size)/pool_stride + 1).astype(int)
-        #print(f"%d\t%d\t%d\t%d\t%d\t%d" % (size1, size2, size3, size4, size5, size6))
+        print(f"%d\t%d\t%d\t%d\t%d\t%d" % (size1, size2, size3, size4, size5, size6))
+        #self.conv4 = nn.Conv2d(output3, output4, filter4, padding = padding4)
+
+        #size7 = size6+2*padding5-(filter5-1)
+        
+        #size6 = np.floor((size7 - pool_size)/pool_stride + 1).astype(int)
+
         self.fc1 = nn.Linear(output3 * size6 * size6, 120)
         self.fc2 = nn.Linear(120, 80)
         self.fc3 = nn.Linear(80,output)
@@ -165,6 +171,7 @@ def main(args):
     o = False
     o_append = False
     hot = False
+    start_target = "./loops_counter_net.pth"
     target = "./loops_counter_net.pth"
     data_file='data/dat.csv'
     data_dir='data/images/'
@@ -177,8 +184,10 @@ def main(args):
         except: pass
         if type(arg) == int:
             e = arg
-        elif arg == "+":
+        elif arg[0] == "+":
             append = True
+            if "." in arg:
+                start_target = arg[arg.index("."):]
         elif arg[0] == "o":
             o = True
             if len(arg) > 1 and arg[1] == "+":
@@ -208,14 +217,18 @@ def main(args):
         else:
             print(f"Argument '%s' ignored" % str(arg))
 
-    if not os.path.exists(target):
+    if append and not os.path.exists(start_target):
         append = False
-
+        print("Couldn't find target starting model")
+    if append and model_num >= 0:
+        model_num = len(os.listdir(incr_target))
+        
     print(f"Epoch Count: %d" % e)
     print(f"Batch Size: %d" % b)
     print(f"Output Loss: %r" % o)
-    print(f"Model file: %s" % target)
-    print(f"Append to model: %r" % append)
+    print(f"Output model file: %s" % target)
+    if append:
+        print(f"Starting with model: %r" % start_target)
     if model_num >= 0:
         print(f"\nIncremental Model saving ON")
         print(f"Saving to: %s" % incr_target)
@@ -225,8 +238,8 @@ def main(args):
 
     print(f"Using device: %s" % device)
     net = Net()
-    if append and os.path.exists(target):
-        net.load_state_dict(torch.load(target))
+    if append:
+        net.load_state_dict(torch.load(start_target))
         if hot:
             criterion = nn.MSELoss()
         else:
