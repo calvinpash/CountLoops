@@ -15,9 +15,9 @@ import os
 class Net(nn.Module):
     def __init__(self, output = 12):
         super(Net, self).__init__()
-        padding1=0
+        padding1=1
         filter1=3
-        output1 = 16
+        output1 = 32
         
         self.conv0 = nn.Conv2d(3, 1, 1, padding = 0)#Reduce RGB channels to one value
         self.conv1 = nn.Conv2d(3, output1, filter1, padding = padding1)
@@ -31,9 +31,9 @@ class Net(nn.Module):
         size2=np.floor((size1 - pool_size)/pool_stride + 1).astype(int)
         #print(size2)
 
-        padding2=0
-        filter2=3
-        output2=16
+        padding2=2
+        filter2=5
+        output2=32
 
         self.conv2 = nn.Conv2d(output1, output2, filter2, padding = padding2)
         size3 = size2+2*padding2-(filter2-1)
@@ -43,24 +43,26 @@ class Net(nn.Module):
         size4=np.floor((size3 - pool_size)/pool_stride + 1).astype(int)
 
 
-        padding3 = 0
+        padding3 = 1
         filter3 = 3
-        output3 = 4
+        output3 = 32
         self.conv3 = nn.Conv2d(output2, output3, filter3, padding = padding3)
 
         size5 = size4+2*padding3-(filter3-1)
-        
         size6 = np.floor((size5 - pool_size)/pool_stride + 1).astype(int)
-        print(f"%d\t%d\t%d\t%d\t%d\t%d" % (size1, size2, size3, size4, size5, size6))
-        #self.conv4 = nn.Conv2d(output3, output4, filter4, padding = padding4)
+        #print(f"%d\t%d\t%d\t%d\t%d\t%d" % (size1, size2, size3, size4, size5, size6))
 
-        #size7 = size6+2*padding5-(filter5-1)
-        
-        #size6 = np.floor((size7 - pool_size)/pool_stride + 1).astype(int)
+        output4 = 8
+        filter4 = 3
+        padding4 = 1
+        self.conv4 = nn.Conv2d(output3, output4, filter4, padding = padding4)
 
-        self.fc1 = nn.Linear(output3 * size6 * size6, 120)
+        size7 = size6+2*padding4-(filter4-1)
+        size6 = np.floor((size7 - pool_size)/pool_stride + 1).astype(int)
+
+        self.fc1 = nn.Linear(output4 * size6 * size6, 120)
         self.fc2 = nn.Linear(120, 80)
-        self.fc3 = nn.Linear(80,output)
+        self.fc_out = nn.Linear(120,output)
 
     def forward(self, x):
         #x = self.conv0(x)
@@ -72,16 +74,24 @@ class Net(nn.Module):
         x = self.conv2(x)
         #print(x.shape)
         x = self.pool(F.relu(x))
-        #print(x.shape)
+        ##print(x.shape)
         x = self.conv3(x)
         #print(x.shape)
         x = self.pool(F.relu(x))
-        
+        #print(x.shape)
+        x = self.conv4(x)
+        #print(x.shape)
+        x = self.pool(F.relu(x))
+        #print(x.shape)
         x = x.view(-1, self.num_flat_features(x))
         #print(x.shape)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        #print(x.shape)
+        #x = F.relu(self.fc2(x))
+        #print(x.shape)
+        #x = F.relu(self.fc3(x))
+        x = self.fc_out(x)
+        
         return x
 
 
@@ -117,7 +127,7 @@ class LoopsDataset(Dataset):
         image = np.zeros([tmp.size[0],tmp.size[1],3])
         image[:,:,0],image[:,:,1],image[:,:,2]=tmp.split()
         #print(image.shape)
-        text = self.loops_frame.iloc[idx, 1].replace("%2B","+").replace("%23","#").replace("%25","%").replace("%26","&")
+        text = str(self.loops_frame.iloc[idx, 1]).replace("%2B","+").replace("%23","#").replace("%25","%").replace("%26","&")
 
         if self.hot: #If using one-hot encoded list (MSE, . . .)
             loops = np.zeros(21)
