@@ -19,79 +19,61 @@ class Net(nn.Module):
         filter1=3
         output1 = 32
         
-        self.conv0 = nn.Conv2d(3, 1, 1, padding = 0)#Reduce RGB channels to one value
         self.conv1 = nn.Conv2d(3, output1, filter1, padding = padding1)
+
         size1=64+2*padding1-(filter1-1)
-        #print(size1)
+        
         pool_size=2 #pooling kernel
         pool_stride=2 #pooling size
 
         self.pool = nn.MaxPool2d(pool_size, pool_stride)#summarizes the most activated presence of a feature
 
         size2=np.floor((size1 - pool_size)/pool_stride + 1).astype(int)
-        #print(size2)
-
+        
         padding2=2
         filter2=5
         output2=32
 
         self.conv2 = nn.Conv2d(output1, output2, filter2, padding = padding2)
+
         size3 = size2+2*padding2-(filter2-1)
-        #print(size3)
-
-        #self.fc1 = nn.Linear(16 * 4 * 4, 120)
         size4=np.floor((size3 - pool_size)/pool_stride + 1).astype(int)
-
 
         padding3 = 1
         filter3 = 3
         output3 = 32
+
         self.conv3 = nn.Conv2d(output2, output3, filter3, padding = padding3)
 
         size5 = size4+2*padding3-(filter3-1)
         size6 = np.floor((size5 - pool_size)/pool_stride + 1).astype(int)
-        #print(f"%d\t%d\t%d\t%d\t%d\t%d" % (size1, size2, size3, size4, size5, size6))
-
+        
         output4 = 8
         filter4 = 3
         padding4 = 1
+
         self.conv4 = nn.Conv2d(output3, output4, filter4, padding = padding4)
 
         size7 = size6+2*padding4-(filter4-1)
         size6 = np.floor((size7 - pool_size)/pool_stride + 1).astype(int)
 
         self.fc1 = nn.Linear(output4 * size6 * size6, 120)
-        self.fc2 = nn.Linear(120, 80)
         self.fc_out = nn.Linear(120,output)
 
     def forward(self, x):
-        #x = self.conv0(x)
-        #print(x.shape)
-        x = self.conv1(x)
-        #print(x.shape)
-        x = self.pool(F.relu(x))
-        #print(x.shape)
-        x = self.conv2(x)
-        #print(x.shape)
-        x = self.pool(F.relu(x))
-        ##print(x.shape)
-        x = self.conv3(x)
-        #print(x.shape)
-        x = self.pool(F.relu(x))
-        #print(x.shape)
-        x = self.conv4(x)
-        #print(x.shape)
-        x = self.pool(F.relu(x))
-        #print(x.shape)
+        x = self.conv1(x)        
+        x = self.pool(F.relu(x))        
+        x = self.conv2(x)        
+        x = self.pool(F.relu(x))        
+        x = self.conv3(x)        
+        x = self.pool(F.relu(x))        
+        x = self.conv4(x)        
+        x = self.pool(F.relu(x))        
+
         x = x.view(-1, self.num_flat_features(x))
-        #print(x.shape)
-        x = F.relu(self.fc1(x))
-        #print(x.shape)
-        #x = F.relu(self.fc2(x))
-        #print(x.shape)
-        #x = F.relu(self.fc3(x))
+       
+        x = F.relu(self.fc1(x))              
         x = self.fc_out(x)
-        
         return x
 
 
@@ -153,7 +135,6 @@ class ToTensor(object):
         image = image/255.#Does all the normalization for me
         #Convert image shape from (64,64,3) to (3,64,64)
 
-        #print(image.shape)
         image = image.transpose((2, 0, 1))
         if hot:
             return {'image': torch.from_numpy(image).float(),
@@ -276,13 +257,9 @@ def main(args):
         print("Incremental save size greater than epoch.")
         exit()
 
-    classes = tuple(range(21))
-
     #We use MSELoss here because our output is a vector of length 21
     optimizer = optim.SGD(net.parameters(), lr=lr)#,momentum = 0.9)
     print("Loaded\n")
-
-
 
     if o:
         settings = f"e%db%dnw%d" % (e, b, nw)
@@ -343,10 +320,7 @@ def main(args):
             optimizer.step()
             
             running_loss += loss.item()
-            # if i % 200 == 199:    # print every 200 batches
-            #     print('[%d, %5d] loss: %.3f' %
-            #           (epoch + 1, i + 1, running_loss / 200))
-            #     running_loss = 0.0
+
         if model_num >= 0 and epoch % incr_size == 0:
             torch.save(net.state_dict(), f"%s/%d.pth" % (incr_target, model_num))
             model_num += 1
