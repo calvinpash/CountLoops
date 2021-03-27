@@ -1,11 +1,11 @@
 # CountLoops
 NN to count the number of loops in an RGB image of some text.
 
-### train_loop_counter_CNN
+### trainer
 
 Train neural network to estimate the number of enclosed spaces in a given text image
 To Call:
-python ./train_loop_counter_CNN.py
+python ./trainer.py
 
 Args:
 *    epoch = 100:        [0-9]+
@@ -15,12 +15,15 @@ Args:
 *    output = False:     o[+]? | [^o]
 *    learn rate = 0.01:    lr0\.[0-9]+
 *    model = "./loops_counter_net.pth": \./.+\.pth
+*    iterations = False: i[0-9]\* \./.+
+        Number is how many epochs pass between each save
+        Folder is the location of the save
 
-### test_loop_counter_CNN
+### tester
 
 Test neural network to estimate the number of enclosed spaces in a given text image
 To Call:
-python ./train_loop_counter_CNN.py
+python ./tester.py
 
 Args:
 *    batch size = 1000:  b[0-9]+
@@ -54,6 +57,6 @@ Args:
 *    display = False:    d | [^d]
 *    append = False:     + | [^+]
 
-### data/dataset_definitions
+### definitions
 Stores Dataset and Transform declarations
 Imported into trainer and tester
