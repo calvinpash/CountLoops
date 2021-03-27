@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from train_loop_counter_CNN import Net, LoopsDataset, ToTensor
+from definitions import Net, LoopsDataset, ToTensor
 from sys import argv, exit
 import numpy as np
 import pandas as pd
@@ -56,7 +56,7 @@ def main(args):
     correct = 0
     total = 0
     all_predictions, all_loops, all_scores = [],[],[]
-   
+
     with torch.no_grad():
         for data in testloader:
             images, loops, text = data['image'], data['loops'], data['text']
